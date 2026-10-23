@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  date            DateTime
+  store           String
+  amount          Float
+  type            String
+  category        String
+  notes           String?
+  personalOrShared String
+  createdAt       DateTime @default(now())
+}
+
+model SharedExpense {
+  id              Int      @id @default(autoincrement())
+  title           String
+  amount          Float
+  date            DateTime
+  paidBy          String
+  participantCount Int
+  splitAmount     Float
+  status          String
+  createdAt       DateTime @default(now())
+  participants    Participant[]
+}
+
+model Participant {
+  id             Int           @id @default(autoincrement())
+  sharedExpense  SharedExpense @relation(fields: [sharedExpenseId], references: [id])
+  sharedExpenseId Int
+  name           String
+  amountOwed     Float
+  amountPaid     Float
+}
+
+model Debt {
+  id       Int      @id @default(autoincrement())
+  person   String
+  amount   Float
+  type     String
+  reason   String
+  status   String
+  date     DateTime
+  createdAt DateTime @default(now())
+}
+
+model RentPayment {
+  id        Int      @id @default(autoincrement())
+  weekStart DateTime
+  weekEnd   DateTime
+  amount    Float
+  status    String
+  paidDate  DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Settings {
+  id                   Int      @id @default(autoincrement())
+  currency             String
+  weekStart            String
+  weeklyRent           Float
+  monthlySavingsGoal   Float
+  createdAt            DateTime @default(now())
+}
