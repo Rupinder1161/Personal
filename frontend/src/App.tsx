@@ -238,14 +238,7 @@ type Transaction = {
   personalOrShared: 'Personal' | 'Shared'
 }
 
-const initialTransactions: Transaction[] = [
-  { id: 1, date: '2026-10-23', store: 'Pak\'nSave', amount: 180, type: 'Expense', category: 'Groceries', notes: 'Weekly shop', personalOrShared: 'Personal' },
-  { id: 2, date: '2026-10-22', store: 'BP', amount: 90, type: 'Expense', category: 'Fuel', notes: 'Travel', personalOrShared: 'Personal' },
-  { id: 3, date: '2026-10-21', store: "McDonald's", amount: 25, type: 'Expense', category: 'Dining Out', notes: 'Lunch', personalOrShared: 'Shared' },
-  { id: 4, date: '2026-10-20', store: 'Salary', amount: 4200, type: 'Income', category: 'Salary', notes: 'Monthly pay', personalOrShared: 'Personal' },
-  { id: 5, date: '2026-10-18', store: 'Power', amount: 85, type: 'Expense', category: 'Utilities', notes: 'Electricity', personalOrShared: 'Personal' },
-  { id: 6, date: '2026-10-17', store: 'Warehouse', amount: 120, type: 'Expense', category: 'Shopping', notes: 'Home items', personalOrShared: 'Shared' },
-]
+const initialTransactions: Transaction[] = []
 
 type SharedExpense = {
   id: number
@@ -256,14 +249,11 @@ type SharedExpense = {
   totalParticipants: number
   sharesPaidByMe: number
   sharesOwedToMe: number
-  status: 'Outstanding' | 'Settled'
+  status: 'Pending' | 'Partially Settled' | 'Settled'
+  participants: string
 }
 
-const initialSharedExpenseItems: SharedExpense[] = [
-  { id: 1, title: 'Groceries', amount: 240, date: '2026-10-12', paidBy: 'Gurpreet', totalParticipants: 5, sharesPaidByMe: 2, sharesOwedToMe: 3, status: 'Outstanding' },
-  { id: 2, title: 'Rent', amount: 700, date: '2026-10-08', paidBy: 'Me', totalParticipants: 2, sharesPaidByMe: 1, sharesOwedToMe: 1, status: 'Settled' },
-  { id: 3, title: 'Dinner', amount: 86, date: '2026-10-05', paidBy: 'Wife', totalParticipants: 3, sharesPaidByMe: 1, sharesOwedToMe: 2, status: 'Outstanding' },
-]
+const initialSharedExpenseItems: SharedExpense[] = []
 
 const calculateSplitAmount = (amount: number, totalParticipants: number) => amount / Math.max(totalParticipants, 1)
 
@@ -284,12 +274,7 @@ type RentEntry = {
   notes: string
 }
 
-const initialRentEntries: RentEntry[] = [
-  { id: 1, week: 'Week 1', amount: 250, status: 'Paid', paidDate: '2026-10-03', notes: 'Rent paid' },
-  { id: 2, week: 'Week 2', amount: 250, status: 'Paid', paidDate: '2026-10-10', notes: 'Rent paid' },
-  { id: 3, week: 'Week 3', amount: 250, status: 'Due', paidDate: '2026-10-17', notes: 'Due this week' },
-  { id: 4, week: 'Week 4', amount: 250, status: 'Upcoming', paidDate: '2026-10-24', notes: 'Planned payment' },
-]
+const initialRentEntries: RentEntry[] = []
 
 type BillEntry = {
   id: number
@@ -300,11 +285,7 @@ type BillEntry = {
   notes: string
 }
 
-const initialBillEntries: BillEntry[] = [
-  { id: 1, name: 'Electricity', amount: 120, date: '2026-10-12', category: 'Electricity', notes: 'Power bill' },
-  { id: 2, name: 'Water', amount: 70, date: '2026-10-08', category: 'Water', notes: 'Council water' },
-  { id: 3, name: 'Internet', amount: 95, date: '2026-10-05', category: 'Internet', notes: 'Home internet' },
-]
+const initialBillEntries: BillEntry[] = []
 
 const getWeekNumberFromDate = (dateString: string) => {
   if (!dateString) {
@@ -324,11 +305,17 @@ const getWeekNumberFromDate = (dateString: string) => {
 
 const getWeekLabelFromDate = (dateString: string) => `Week ${getWeekNumberFromDate(dateString)}`
 
-const debtEntries = [
-  { person: 'Aisha', amount: 140, reason: 'Movie night', date: '2026-10-02', status: 'Pending', type: 'Owed To Me' },
-  { person: 'Ben', amount: 90, reason: 'Groceries', date: '2026-10-07', status: 'Partial', type: 'I Owe' },
-  { person: 'Carl', amount: 40, reason: 'Fuel', date: '2026-10-09', status: 'Paid', type: 'Owed To Me' },
-]
+type SettlementRecord = {
+  id: number
+  weekEnding: string
+  totalShared: number
+  partnerOwed: number
+  status: 'Settled' | 'Pending'
+}
+
+const initialDebtEntries: Array<{ id: number; person: string; amount: number; reason: string; date: string; status: 'Pending' | 'Partial' | 'Paid' | 'Settled'; type: 'Owed To Me' | 'I Owe' }> = []
+
+const DEFAULT_WEEKLY_RENT = 250
 
 const getReportSnapshot = (transactions: Transaction[], days: number) => {
   const end = new Date()
@@ -360,6 +347,7 @@ const navItems = [
   { label: 'Transactions', to: '/transactions' },
   { label: 'Shared Expenses', to: '/shared-expenses' },
   { label: 'Rent Tracker', to: '/rent-tracker' },
+  { label: 'Household', to: '/household' },
   { label: 'Money Owed', to: '/money-owed' },
   { label: 'Reports', to: '/reports' },
   { label: 'Settings', to: '/settings' },
@@ -369,6 +357,12 @@ function App() {
   const [darkMode, setDarkMode] = useState(true)
   const [period, setPeriod] = useState<Period>('Monthly')
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions)
+  const [sharedExpenseItems, setSharedExpenseItems] = useState<SharedExpense[]>(initialSharedExpenseItems)
+  const [rentEntries, setRentEntries] = useState<RentEntry[]>(initialRentEntries)
+  const [billEntries, setBillEntries] = useState<BillEntry[]>(initialBillEntries)
+  const [debtEntries, setDebtEntries] = useState(initialDebtEntries)
+  const [settlementHistory, setSettlementHistory] = useState<SettlementRecord[]>([])
+  const [weeklyRentAmount, setWeeklyRentAmount] = useState<number>(DEFAULT_WEEKLY_RENT)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -379,8 +373,8 @@ function App() {
   const summary = useMemo<Summary>(() => {
     const income = filteredTransactions.filter((transaction) => transaction.type === 'Income').reduce((sum, item) => sum + item.amount, 0)
     const expenses = filteredTransactions.filter((transaction) => transaction.type === 'Expense').reduce((sum, item) => sum + item.amount, 0)
-    const owedToMe = calculateAmountOwedToMe(initialSharedExpenseItems)
-    const iOwe = calculateAmountYouNeedToPay(initialSharedExpenseItems)
+    const owedToMe = calculateAmountOwedToMe(sharedExpenseItems)
+    const iOwe = calculateAmountYouNeedToPay(sharedExpenseItems)
 
     return {
       income,
@@ -453,11 +447,12 @@ function App() {
             <Routes>
               <Route path="/" element={<DashboardPage period={period} setPeriod={setPeriod} summary={summary} insights={insights} suggestions={suggestions} categorySpend={categorySpend} totalCategorySpend={totalCategorySpend} topExpenses={topExpenses} compareData={compareData} monthlyTrend={monthlyTrend} />} />
               <Route path="/transactions" element={<TransactionsPage transactions={transactions} setTransactions={setTransactions} />} />
-              <Route path="/shared-expenses" element={<SharedExpensesPage />} />
-              <Route path="/rent-tracker" element={<RentPage />} />
-              <Route path="/money-owed" element={<MoneyOwedPage />} />
-                          <Route path="/reports" element={<ReportsPage categorySpend={categorySpend} monthlyTrend={monthlyTrend} reports={reports} />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/shared-expenses" element={<SharedExpensesPage sharedExpenseItems={sharedExpenseItems} setSharedExpenseItems={setSharedExpenseItems} rentEntries={rentEntries} billEntries={billEntries} />} />
+              <Route path="/rent-tracker" element={<RentPage rentEntries={rentEntries} setRentEntries={setRentEntries} billEntries={billEntries} setBillEntries={setBillEntries} weeklyRentAmount={weeklyRentAmount} />} />
+              <Route path="/household" element={<HouseholdPage sharedExpenseItems={sharedExpenseItems} rentEntries={rentEntries} billEntries={billEntries} settlementHistory={settlementHistory} setSettlementHistory={setSettlementHistory} weeklyRentAmount={weeklyRentAmount} />} />
+              <Route path="/money-owed" element={<MoneyOwedPage debtEntries={debtEntries} setDebtEntries={setDebtEntries} />} />
+              <Route path="/reports" element={<ReportsPage categorySpend={categorySpend} monthlyTrend={monthlyTrend} reports={reports} />} />
+              <Route path="/settings" element={<SettingsPage weeklyRentAmount={weeklyRentAmount} setWeeklyRentAmount={setWeeklyRentAmount} />} />
               <Route path="/analytics" element={<AnalyticsPage categorySpend={categorySpend} monthlyTrend={monthlyTrend} />} />
             </Routes>
           </main>
@@ -883,16 +878,27 @@ function TransactionsPage({
   )
 }
 
-function SharedExpensesPage() {
-  const [sharedExpenseItems, setSharedExpenseItems] = useState<SharedExpense[]>(initialSharedExpenseItems)
+function SharedExpensesPage({
+  sharedExpenseItems,
+  setSharedExpenseItems,
+  rentEntries,
+  billEntries,
+}: {
+  sharedExpenseItems: SharedExpense[]
+  setSharedExpenseItems: React.Dispatch<React.SetStateAction<SharedExpense[]>>
+  rentEntries: RentEntry[]
+  billEntries: BillEntry[]
+}) {
   const [formData, setFormData] = useState({
-    title: 'Groceries',
-    amount: 240,
-    date: '2026-10-12',
-    paidBy: 'Gurpreet',
-    totalParticipants: 5,
-    sharesPaidByMe: 2,
-    sharesOwedToMe: 3,
+    title: '',
+    amount: 0,
+    date: new Date().toISOString().slice(0, 10),
+    paidBy: '',
+    totalParticipants: 1,
+    sharesPaidByMe: 0,
+    sharesOwedToMe: 0,
+    status: 'Pending' as SharedExpense['status'],
+    participants: '',
   })
 
   const totalExpenses = sharedExpenseItems.reduce((sum, item) => sum + item.amount, 0)
@@ -905,8 +911,8 @@ function SharedExpensesPage() {
     const sharesYouPay = Math.max(item.totalParticipants - item.sharesPaidByMe - item.sharesOwedToMe, 0)
     return sum + sharesYouPay * split
   }, 0)
-  const rentAndBills = 1250 + 420
-  const netAfterRentBills = Math.max(0, rentAndBills - amountOwedToMe)
+  const totalRentAndBills = rentEntries.reduce((sum, entry) => sum + entry.amount, 0) + billEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const netAfterRentBills = Math.max(0, totalRentAndBills - amountOwedToMe)
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -920,18 +926,21 @@ function SharedExpensesPage() {
       totalParticipants: Number(formData.totalParticipants) || 1,
       sharesPaidByMe: Number(formData.sharesPaidByMe) || 0,
       sharesOwedToMe: Number(formData.sharesOwedToMe) || 0,
-      status: 'Outstanding',
+      status: formData.status,
+      participants: formData.participants || 'Me',
     }
 
     setSharedExpenseItems((current) => [newItem, ...current])
     setFormData({
-      title: 'Groceries',
-      amount: 240,
-      date: '2026-10-12',
-      paidBy: 'Gurpreet',
-      totalParticipants: 5,
-      sharesPaidByMe: 2,
-      sharesOwedToMe: 3,
+      title: '',
+      amount: 0,
+      date: new Date().toISOString().slice(0, 10),
+      paidBy: '',
+      totalParticipants: 1,
+      sharesPaidByMe: 0,
+      sharesOwedToMe: 0,
+      status: 'Pending',
+      participants: '',
     })
   }
 
@@ -973,6 +982,14 @@ function SharedExpensesPage() {
                 className="input-field"
               />
             </Field>
+            <Field label="Participants">
+              <input
+                value={formData.participants}
+                onChange={(event) => setFormData((current) => ({ ...current, participants: event.target.value }))}
+                placeholder="Me, Wife, Flatmate 1"
+                className="input-field"
+              />
+            </Field>
             <Field label="Total participants">
               <input
                 value={formData.totalParticipants}
@@ -980,6 +997,17 @@ function SharedExpensesPage() {
                 type="number"
                 className="input-field"
               />
+            </Field>
+            <Field label="Status">
+              <select
+                value={formData.status}
+                onChange={(event) => setFormData((current) => ({ ...current, status: event.target.value as SharedExpense['status'] }))}
+                className="input-field"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Partially Settled">Partially Settled</option>
+                <option value="Settled">Settled</option>
+              </select>
             </Field>
             <Field label="How many shares did you pay for?">
               <input
@@ -1026,6 +1054,7 @@ function SharedExpensesPage() {
                       <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">{item.status}</span>
                     </div>
                     <div className="mt-3 space-y-1 text-sm">
+                      <div className="flex items-center justify-between"><span>Participants</span><span>{item.participants || 'Me'}</span></div>
                       <div className="flex items-center justify-between"><span>Total</span><span>{currencyFormatter.format(item.amount)}</span></div>
                       <div className="flex items-center justify-between"><span>Per share</span><span>{currencyFormatter.format(split)}</span></div>
                       <div className="flex items-center justify-between"><span>You paid</span><span>{currencyFormatter.format(youPaid)}</span></div>
@@ -1042,22 +1071,32 @@ function SharedExpensesPage() {
   )
 }
 
-function RentPage() {
-  const [rentEntries, setRentEntries] = useState<RentEntry[]>(initialRentEntries)
-  const [billEntries, setBillEntries] = useState<BillEntry[]>(initialBillEntries)
+function RentPage({
+  rentEntries,
+  setRentEntries,
+  billEntries,
+  setBillEntries,
+  weeklyRentAmount,
+}: {
+  rentEntries: RentEntry[]
+  setRentEntries: React.Dispatch<React.SetStateAction<RentEntry[]>>
+  billEntries: BillEntry[]
+  setBillEntries: React.Dispatch<React.SetStateAction<BillEntry[]>>
+  weeklyRentAmount: number
+}) {
   const [rentForm, setRentForm] = useState({
-    week: getWeekLabelFromDate('2026-10-24'),
-    amount: 250,
+    week: getWeekLabelFromDate(new Date().toISOString().slice(0, 10)),
+    amount: 0,
     status: 'Paid' as RentEntry['status'],
-    paidDate: '2026-10-24',
-    notes: 'Paid this week',
+    paidDate: new Date().toISOString().slice(0, 10),
+    notes: '',
   })
   const [billForm, setBillForm] = useState({
-    name: 'Electricity',
-    amount: 120,
-    date: '2026-10-24',
+    name: '',
+    amount: 0,
+    date: new Date().toISOString().slice(0, 10),
     category: 'Electricity' as BillEntry['category'],
-    notes: 'This week utility bill',
+    notes: '',
   })
   const [editingRentId, setEditingRentId] = useState<number | null>(null)
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
@@ -1066,28 +1105,30 @@ function RentPage() {
   const totalBillsPaid = billEntries.reduce((sum, entry) => sum + entry.amount, 0)
   const amountOwedToMe = calculateAmountOwedToMe(initialSharedExpenseItems)
   const outstandingSharedPayments = calculateAmountYouNeedToPay(initialSharedExpenseItems)
-  const netRentBillsAfterOwed = Math.max(0, totalRentPaid + totalBillsPaid - amountOwedToMe)
   const currentWeekLabel = getWeekLabelFromDate(new Date().toISOString().slice(0, 10))
-  const outstandingRent = rentEntries.filter((entry) => entry.status === 'Due' || entry.status === 'Upcoming').reduce((sum, entry) => sum + entry.amount, 0)
+  const currentWeekRentEntry = rentEntries.find((entry) => entry.week === currentWeekLabel)
+  const currentWeekRentDue = currentWeekRentEntry ? (currentWeekRentEntry.status === 'Paid' ? 0 : currentWeekRentEntry.amount) : weeklyRentAmount
+  const netRentBillsAfterOwed = Math.max(0, totalRentPaid + totalBillsPaid + currentWeekRentDue - amountOwedToMe)
+  const outstandingRent = rentEntries.filter((entry) => entry.status === 'Due' || entry.status === 'Upcoming').reduce((sum, entry) => sum + entry.amount, 0) + (currentWeekRentEntry ? 0 : weeklyRentAmount)
 
   const resetRentForm = () => {
     setRentForm({
-      week: getWeekLabelFromDate('2026-10-24'),
-      amount: 250,
+      week: getWeekLabelFromDate(new Date().toISOString().slice(0, 10)),
+      amount: 0,
       status: 'Paid',
-      paidDate: '2026-10-24',
-      notes: 'Paid this week',
+      paidDate: new Date().toISOString().slice(0, 10),
+      notes: '',
     })
     setEditingRentId(null)
   }
 
   const resetBillForm = () => {
     setBillForm({
-      name: 'Electricity',
-      amount: 120,
-      date: '2026-10-24',
+      name: '',
+      amount: 0,
+      date: new Date().toISOString().slice(0, 10),
       category: 'Electricity',
-      notes: 'This week utility bill',
+      notes: '',
     })
     setEditingBillId(null)
   }
@@ -1304,17 +1345,207 @@ function RentPage() {
   )
 }
 
-function MoneyOwedPage() {
+function HouseholdPage({
+  sharedExpenseItems,
+  rentEntries,
+  billEntries,
+  settlementHistory,
+  setSettlementHistory,
+  weeklyRentAmount,
+}: {
+  sharedExpenseItems: SharedExpense[]
+  rentEntries: RentEntry[]
+  billEntries: BillEntry[]
+  settlementHistory: SettlementRecord[]
+  setSettlementHistory: React.Dispatch<React.SetStateAction<SettlementRecord[]>>
+  weeklyRentAmount: number
+}) {
+  const totalShared = sharedExpenseItems.reduce((sum, item) => sum + item.amount, 0)
+  const totalRent = rentEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const totalBills = billEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const theyOweMe = calculateAmountOwedToMe(sharedExpenseItems)
+  const iOweThem = calculateAmountYouNeedToPay(sharedExpenseItems)
+  const currentWeekLabel = getWeekLabelFromDate(new Date().toISOString().slice(0, 10))
+  const currentWeekRentEntry = rentEntries.find((entry) => entry.week === currentWeekLabel)
+  const currentWeekRentDue = currentWeekRentEntry ? (currentWeekRentEntry.status === 'Paid' ? 0 : currentWeekRentEntry.amount) : weeklyRentAmount
+  const netSettlement = theyOweMe - iOweThem
+  const dueThisWeek = Math.max(0, totalBills + currentWeekRentDue + iOweThem - theyOweMe)
+
+  const settleWeek = () => {
+    const weekEnding = new Date().toISOString().slice(0, 10)
+    setSettlementHistory((current) => [{
+      id: Date.now(),
+      weekEnding,
+      totalShared: totalShared + totalRent + totalBills,
+      partnerOwed: Math.max(0, theyOweMe),
+      status: 'Settled',
+    }, ...current])
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Household" description="Track household shared costs, rent, bills, settlement balances, and weekly transfers." />
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatPill label="Current Settlement" value={currencyFormatter.format(netSettlement)} />
+        <StatPill label="You Owe" value={currencyFormatter.format(iOweThem)} />
+        <StatPill label="They Owe" value={currencyFormatter.format(theyOweMe)} />
+        <StatPill label="Need to transfer this week" value={currencyFormatter.format(dueThisWeek)} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Weekly Household Summary</h3>
+            <button type="button" onClick={settleWeek} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500">Settle Week</button>
+          </div>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-700"><span>Rent</span><span>{currencyFormatter.format(totalRent)}</span></div>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-700"><span>Power / Utilities</span><span>{currencyFormatter.format(totalBills)}</span></div>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-700"><span>Groceries / Shared</span><span>{currencyFormatter.format(totalShared)}</span></div>
+            <div className="flex items-center justify-between font-semibold"><span>Total Shared</span><span>{currencyFormatter.format(totalShared + totalRent + totalBills)}</span></div>
+            <div className="flex items-center justify-between"><span>My Share</span><span>{currencyFormatter.format(iOweThem)}</span></div>
+            <div className="flex items-center justify-between"><span>Others Share</span><span>{currencyFormatter.format(theyOweMe)}</span></div>
+            <div className="flex items-center justify-between"><span>Amount owing</span><span>{currencyFormatter.format(Math.max(0, netSettlement))}</span></div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h3 className="text-xl font-semibold">Settlement History</h3>
+          <div className="mt-4 space-y-3">
+            {settlementHistory.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No settlements recorded yet.</div>
+            ) : (
+              settlementHistory.map((entry) => (
+                <div key={entry.id} className="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Week ending {entry.weekEnding}</span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">{entry.status}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                    <span>Total shared</span>
+                    <span>{currencyFormatter.format(entry.totalShared)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                    <span>Partner owed</span>
+                    <span>{currencyFormatter.format(entry.partnerOwed)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h3 className="text-xl font-semibold">Outstanding Amounts</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <StatPill label="Outstanding shared" value={currencyFormatter.format(Math.max(0, theyOweMe))} />
+          <StatPill label="Outstanding owed by me" value={currencyFormatter.format(Math.max(0, iOweThem))} />
+          <StatPill label="Net settlement" value={currencyFormatter.format(Math.max(0, netSettlement))} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MoneyOwedPage({
+  debtEntries,
+  setDebtEntries,
+}: {
+  debtEntries: Array<{ id: number; person: string; amount: number; reason: string; date: string; status: 'Pending' | 'Partial' | 'Paid' | 'Settled'; type: 'Owed To Me' | 'I Owe' }>
+  setDebtEntries: React.Dispatch<React.SetStateAction<Array<{ id: number; person: string; amount: number; reason: string; date: string; status: 'Pending' | 'Partial' | 'Paid' | 'Settled'; type: 'Owed To Me' | 'I Owe' }>>>
+}) {
+  const [formData, setFormData] = useState({
+    person: '',
+    amount: 0,
+    reason: '',
+    type: 'Owed To Me' as 'Owed To Me' | 'I Owe',
+    status: 'Pending' as 'Pending' | 'Partial' | 'Paid' | 'Settled',
+  })
+
+  const totalOwedToMe = debtEntries
+    .filter((entry) => entry.type === 'Owed To Me' && entry.status !== 'Settled')
+    .reduce((sum, entry) => sum + entry.amount, 0)
+
+  const totalIowe = debtEntries
+    .filter((entry) => entry.type === 'I Owe' && entry.status !== 'Settled')
+    .reduce((sum, entry) => sum + entry.amount, 0)
+
+  const handleAddDebt = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!formData.person.trim() || Number(formData.amount) <= 0) {
+      return
+    }
+
+    setDebtEntries((current) => [
+      {
+        id: Date.now(),
+        person: formData.person,
+        amount: Number(formData.amount),
+        reason: formData.reason || 'Added manually',
+        date: new Date().toISOString().slice(0, 10),
+        status: formData.status,
+        type: formData.type,
+      },
+      ...current,
+    ])
+
+    setFormData({
+      person: '',
+      amount: 0,
+      reason: '',
+      type: 'Owed To Me',
+      status: 'Pending',
+    })
+  }
+
+  const settleDebt = (id: number) => {
+    setDebtEntries((current) => current.map((entry) => (entry.id === id ? { ...entry, status: 'Settled' } : entry)))
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title="Money Owed" description="Track what people owe you and what you owe to others." />
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <form onSubmit={handleAddDebt} className="grid gap-4 md:grid-cols-5">
+          <Field label="Person"><input value={formData.person} onChange={(event) => setFormData((current) => ({ ...current, person: event.target.value }))} className="input-field" /></Field>
+          <Field label="Amount"><input value={formData.amount} onChange={(event) => setFormData((current) => ({ ...current, amount: Number(event.target.value) || 0 }))} type="number" className="input-field" /></Field>
+          <Field label="Reason"><input value={formData.reason} onChange={(event) => setFormData((current) => ({ ...current, reason: event.target.value }))} className="input-field" /></Field>
+          <Field label="Type">
+            <select value={formData.type} onChange={(event) => setFormData((current) => ({ ...current, type: event.target.value as 'Owed To Me' | 'I Owe' }))} className="input-field">
+              <option value="Owed To Me">Owed To Me</option>
+              <option value="I Owe">I Owe</option>
+            </select>
+          </Field>
+          <Field label="Status">
+            <select value={formData.status} onChange={(event) => setFormData((current) => ({ ...current, status: event.target.value as 'Pending' | 'Partial' | 'Paid' | 'Settled' }))} className="input-field">
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+              <option value="Paid">Paid</option>
+              <option value="Settled">Settled</option>
+            </select>
+          </Field>
+          <div className="md:col-span-5 flex justify-end">
+            <button type="submit" className="rounded-xl bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-500">Add balance</button>
+          </div>
+        </form>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatPill label="Owed to me" value={currencyFormatter.format(totalOwedToMe)} />
+        <StatPill label="I owe" value={currencyFormatter.format(totalIowe)} />
+        <StatPill label="Net balance" value={currencyFormatter.format(Math.max(0, totalOwedToMe - totalIowe))} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h3 className="text-xl font-semibold">People who owe me</h3>
           <div className="mt-4 space-y-3">
             {debtEntries.filter((entry) => entry.type === 'Owed To Me').map((entry) => (
-              <div key={entry.person} className="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
+              <div key={entry.id} className="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold">{entry.person}</p>
                   <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">{entry.status}</span>
@@ -1323,6 +1554,11 @@ function MoneyOwedPage() {
                   <span>{entry.reason}</span>
                   <span>{currencyFormatter.format(entry.amount)}</span>
                 </div>
+                {entry.status !== 'Settled' && (
+                  <div className="mt-3 flex justify-end">
+                    <button type="button" onClick={() => settleDebt(entry.id)} className="text-xs font-medium text-emerald-600 hover:text-emerald-500">Mark settled</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1332,7 +1568,7 @@ function MoneyOwedPage() {
           <h3 className="text-xl font-semibold">People I owe</h3>
           <div className="mt-4 space-y-3">
             {debtEntries.filter((entry) => entry.type === 'I Owe').map((entry) => (
-              <div key={entry.person} className="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
+              <div key={entry.id} className="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold">{entry.person}</p>
                   <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">{entry.status}</span>
@@ -1341,6 +1577,11 @@ function MoneyOwedPage() {
                   <span>{entry.reason}</span>
                   <span>{currencyFormatter.format(entry.amount)}</span>
                 </div>
+                {entry.status !== 'Settled' && (
+                  <div className="mt-3 flex justify-end">
+                    <button type="button" onClick={() => settleDebt(entry.id)} className="text-xs font-medium text-amber-600 hover:text-amber-500">Mark settled</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1449,7 +1690,19 @@ function AnalyticsPage({
   )
 }
 
-function SettingsPage() {
+function SettingsPage({
+  weeklyRentAmount,
+  setWeeklyRentAmount,
+}: {
+  weeklyRentAmount: number
+  setWeeklyRentAmount: React.Dispatch<React.SetStateAction<number>>
+}) {
+  const [rentValue, setRentValue] = useState(String(weeklyRentAmount))
+
+  useEffect(() => {
+    setRentValue(String(weeklyRentAmount))
+  }, [weeklyRentAmount])
+
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description="Personalize the app to match your financial rhythm." />
@@ -1458,7 +1711,16 @@ function SettingsPage() {
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <Field label="Currency"><input defaultValue="NZD" className="input-field" /></Field>
           <Field label="Week Start Day"><input defaultValue="Sunday" className="input-field" /></Field>
-          <Field label="Weekly Rent"><input defaultValue="250" type="number" className="input-field" /></Field>
+          <Field label="Weekly Rent Amount">
+            <input
+              value={rentValue}
+              type="number"
+              min="0"
+              onChange={(event) => setRentValue(event.target.value)}
+              onBlur={() => setWeeklyRentAmount(Math.max(0, Number(rentValue) || 0))}
+              className="input-field"
+            />
+          </Field>
           <Field label="Monthly Savings Goal"><input defaultValue="2500" type="number" className="input-field" /></Field>
         </div>
       </div>
